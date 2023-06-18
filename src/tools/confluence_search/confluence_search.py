@@ -6,9 +6,9 @@ import sys
 from decouple import config
 from typing import Union
 import logging
+import uuid
 
 os.environ["OPENAI_API_KEY"] = config("OPENAI_API_KEY")
-
 
 confluence = Confluence(
     url=config("CONFLUENCE_URL"),
@@ -17,8 +17,7 @@ confluence = Confluence(
 )
 
 main_file_path = sys.modules['__main__'].__file__
-main_dir = os.path.dirname(os.path.abspath(main_file_path))
-
+data_dir = os.path.join(os.path.dirname(os.path.abspath(main_file_path)), "data")
 
 pre_prompt = """
 You are being given a question that is meant to be answered by searching the 
@@ -51,6 +50,13 @@ text ~ "BYODB AND process"
 """
 
 
+def create_unique_folder():
+    folder_name = str(uuid.uuid4())
+    folder_path = os.path.join(data_dir, folder_name)
+    os.mkdir(folder_path)
+    return folder_path
+
+
 def generate_cql_query_keywords(input_text: str) -> str:
     llm = OpenAI()
     response = llm.predict(pre_prompt + input_text)
@@ -71,35 +77,33 @@ def query_conflu(cql_query: str):
 
 
 def download_documents(pages: list):
-    if pages:
-        print(f"Found pages: {pages}")
-        documents = []
+    print(f"Found pages: {pages}")
+    documents = []
+    query_directory = create_unique_folder()
 
-        for page in pages:
-            print(f"Checking page: {page})")
-            # Check the local directory to see if we already have the page's content
-            if os.path.exists(f"{main_dir}/data/{page['content']['id']}.txt"):
-                with open(f"{main_dir}/data/{page['content']['id']}.txt", "r") as f:
-                    documents.append(f.read())
-                    f.close()
-                continue
+    for page in pages:
+        print(f"Checking page: {page})")
+        # Check the local directory to see if we already have the page's content
+        if os.path.exists(f"{query_directory}/{page['content']['id']}.txt"):
+            with open(f"{query_directory}/{page['content']['id']}.txt", "r") as f:
+                documents.append(f.read())
+                f.close()
+            continue
 
-            # If we don't have the page's content, then get it from Confluence
-            else:
-                content = confluence.get_page_by_id(page['content']['id'], expand='body.view')
-                documents.append(content['body']['view']['value'])
-                # add each page's content as a txt file in the data directory
-                with open(f"{main_dir}/data/{page['content']['id']}.txt", "w") as f:
-                    f.write(content['body']['view']['value'])
-                    f.close()
-        # convert documents to a string
-        print(f"Using document directory: {main_dir}/data")
-        documents = SimpleDirectoryReader(f"{main_dir}/data").load_data()
-        index = GPTVectorStoreIndex.from_documents(documents)
+        # If we don't have the page's content, then get it from Confluence
+        else:
+            content = confluence.get_page_by_id(page['content']['id'], expand='body.view')
+            documents.append(content['body']['view']['value'])
+            # add each page's content as a txt file in the data directory
+            with open(f"{query_directory}/{page['content']['id']}.txt", "w") as f:
+                f.write(content['body']['view']['value'])
+                f.close()
+    # convert documents to a string
+    print(f"Using document directory: {query_directory}")
+    documents = SimpleDirectoryReader(f"{query_directory}").load_data()
+    index = GPTVectorStoreIndex.from_documents(documents)
 
-        return index
-    else:
-        return None
+    return index
 
 
 def conflu_search(search: str) -> Union[GPTVectorStoreIndex, None]:
@@ -114,5 +118,3 @@ def conflu_search(search: str) -> Union[GPTVectorStoreIndex, None]:
 
 if __name__ == "__main__":
     conflu_search("What is the complete BYODB process?")
-
-
