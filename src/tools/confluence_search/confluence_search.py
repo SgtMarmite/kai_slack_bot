@@ -8,8 +8,6 @@ from typing import Union
 import logging
 import uuid
 
-os.environ["OPENAI_API_KEY"] = config("OPENAI_API_KEY")
-
 confluence = Confluence(
     url=config("CONFLUENCE_URL"),
     username=config("CONFLUENCE_USERNAME"),
@@ -41,7 +39,7 @@ A Phrase is a group of words surrounded by double quotes such as "hello dolly".
 Note: All query terms in Confluence are case insensitive.
 
 Your task is to take the input question and generate a CQL query that will return the most relevant results. 
-Use shorter terms rather than long ones.
+Use shorter terms rather than long ones. Do not include wording like: step by step guide, exact process etc.
 Respond only with a valid atlassian CQL query!
 
 Examples:
@@ -65,7 +63,7 @@ def generate_cql_query_keywords(input_text: str) -> str:
 
 
 def query_conflu(cql_query: str):
-    print(f"Query: {cql_query}")
+    logging.info(f"Query: {cql_query}")
 
     pages = None
     try:
@@ -77,12 +75,12 @@ def query_conflu(cql_query: str):
 
 
 def download_documents(pages: list):
-    print(f"Found pages: {pages}")
+    logging.info(f"Found pages: {pages}")
     documents = []
     query_directory = create_unique_folder()
 
     for page in pages:
-        print(f"Checking page: {page})")
+        logging.info(f"Checking page: {page})")
         # Check the local directory to see if we already have the page's content
         if os.path.exists(f"{query_directory}/{page['content']['id']}.txt"):
             with open(f"{query_directory}/{page['content']['id']}.txt", "r") as f:
@@ -98,8 +96,9 @@ def download_documents(pages: list):
             with open(f"{query_directory}/{page['content']['id']}.txt", "w") as f:
                 f.write(content['body']['view']['value'])
                 f.close()
+
     # convert documents to a string
-    print(f"Using document directory: {query_directory}")
+    logging.info(f"Using document directory: {query_directory}")
     documents = SimpleDirectoryReader(f"{query_directory}").load_data()
     index = GPTVectorStoreIndex.from_documents(documents)
 
@@ -107,14 +106,17 @@ def download_documents(pages: list):
 
 
 def conflu_search(search: str) -> Union[GPTVectorStoreIndex, None]:
-    while True:
+    query_counter = 0
+    while query_counter < 5:
+        query_counter += 1
         query = generate_cql_query_keywords(search)
         r = query_conflu(query)
         if r is not None and r.get("results"):
-            break
-    index = download_documents(r.get("results"))
-    return index
+            index = download_documents(r.get("results"))
+            return index
+    return None
 
 
 if __name__ == "__main__":
+    os.environ["OPENAI_API_KEY"] = config("OPENAI_API_KEY")
     conflu_search("What is the complete BYODB process?")
