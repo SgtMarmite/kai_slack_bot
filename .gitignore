@@ -1,9 +1,9 @@
 .venv
-.venv/
 src/tools/zendesk_search
+src/tools/process_csv.py
+src/tools/query_website.py
 data/*
 .idea
 */__pycache__
-.env
 *.pyc
 .env
