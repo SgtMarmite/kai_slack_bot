@@ -9,8 +9,8 @@ Instructions on how to install and set up the project.
 
     SLACK_BOT_TOKEN=token  
     SLACK_SIGNING_SECRET=secret  
-    CONFLUENCE_URL=  
-    CONFLUENCE_USERNAME=dominik.novotny@keboola.com  
+    CONFLUENCE_URL=https://keboola.atlassian.net/
+    CONFLUENCE_USERNAME=harry.potter@hogwarts.com  
     CONFLUENCE_PASSWORD=pwd  
     OPENAI_API_KEY=api_key  
     APP_PORT=3000
