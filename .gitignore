@@ -1,0 +1,9 @@
+.venv
+.venv/
+src/tools/zendesk_search
+data/*
+.idea
+*/__pycache__
+.env
+*.pyc
+.env
