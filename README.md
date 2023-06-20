@@ -14,3 +14,8 @@ Instructions on how to install and set up the project.
     CONFLUENCE_PASSWORD=pwd  
     OPENAI_API_KEY=api_key  
     APP_PORT=3000
+
+
+## License
+
+MIT licensed, see [LICENSE](./LICENSE.md) file.
