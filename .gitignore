@@ -1,9 +1,16 @@
-.venv
-src/tools/process_csv.py
-src/tools/query_website.py
+/venv
 data/*
 .idea
 */__pycache__
 *.pyc
 .env
-.gitignore
+*.json
+database/datadir/confluence/*
+src/tools/confluence_search/Keboola AI (Kai).code-workspace
+database/builders/downloads/*
+database/builders/zendesk_data/*
+database/builders/zendesk.ipynb
+database/datadir/zendesk/raw/*
+downloaded_data/*
+index_data.pkl
+database/builders/index_test_query.ipynb

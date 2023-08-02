@@ -1,4 +1,4 @@
-#TODO: Build out Zendesk Search Tooling
+# TODO: Build out Zendesk Search Tooling
 
 import streamlit as st
 # Import the Zenpy Class
@@ -7,18 +7,16 @@ import datetime
 from llama_index import SimpleDirectoryReader, GPTVectorStoreIndex, LLMPredictor, PromptHelper
 import os
 
-
 creds = {
-    'email' : st.secrets['ZENDESK_EMAIL'],
-    'token' : st.secrets['ZENDESK_TOKEN'],
+    'email': st.secrets['ZENDESK_EMAIL'],
+    'token': st.secrets['ZENDESK_TOKEN'],
     'subdomain': st.secrets['ZENDESK_SUBDOMAIN']
 }
-
 
 # Default
 zenpy_client = Zenpy(**creds)
 # TODO: 
-today = datetime.datetime.now()
+now = datetime.datetime.now()
 yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
 pastMonth = datetime.datetime.now() - datetime.timedelta(days=30)
 pastThreeMonths = datetime.datetime.now() - datetime.timedelta(days=90)
@@ -60,6 +58,7 @@ def search_tickets_by_date_range(input_text: str, start_date: datetime, end_date
         return None
 
     return index
+
 
 if __name__ == "__main__":
     search_tickets_by_date_range()

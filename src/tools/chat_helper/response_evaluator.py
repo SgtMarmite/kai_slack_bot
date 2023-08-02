@@ -4,7 +4,6 @@ from langchain.chat_models import ChatOpenAI
 from llama_index import LLMPredictor, ServiceContext
 from llama_index.evaluation import QueryResponseEvaluator
 
-
 # build service context
 llm_predictor = LLMPredictor(llm=ChatOpenAI(temperature=0, model_name="gpt-4"))
 service_context = ServiceContext.from_defaults(llm_predictor=llm_predictor)
@@ -28,6 +27,7 @@ def evaluate_response_binary(response) -> bool:
     print(str(eval_result))
     return eval_result
 
+
 def query_response_evaluator(query, response):
     """
     Evaluate a response to a query by using a language learning model to extract keywords from the input text.
@@ -44,6 +44,7 @@ def query_response_evaluator(query, response):
     eval_result = evaluator.evaluate(response, query)
     print(str(eval_result))
     return eval_result
+
 
 if __name__ == "__main__":
     evaluate_response_binary()
