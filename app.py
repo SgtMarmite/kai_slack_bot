@@ -1,5 +1,6 @@
 import os
 import logging
+
 from decouple import config
 from fastapi import FastAPI, Request
 from llama_index.chat_engine import CondenseQuestionChatEngine
@@ -7,20 +8,23 @@ from llama_index.chat_engine.condense_question import ChatMessage
 from slack_bolt import App
 from slack_bolt.adapter.fastapi import SlackRequestHandler
 
-import openai
 import pinecone
 from llama_index.vector_stores import PineconeVectorStore
 from llama_index import VectorStoreIndex
 from llama_index.prompts import Prompt
 
+from client.openai_client import OpenAIClient, AzureOpenAIClient
+from client.base import AIClientException
 
 logging.basicConfig(level=logging.INFO)
 
 os.environ["OPENAI_API_KEY"] = openai.api_key = config("OPENAI_API_KEY")
+os.environ["OPENAI_API_BASE"] = openai.api_base = config("OPENAI_API_BASE")
 
-api_key = config("PINECONE_API_KEY")
+
+pinecone_api_key = config("PINECONE_API_KEY")
 pinecone_env = config("PINECONE_ENV")
-pinecone.init(api_key=api_key, environment=pinecone_env)
+pinecone.init(api_key=pinecone_api_key, environment=pinecone_env)
 
 slack_bot_token = config("SLACK_BOT_TOKEN")
 slack_bot_secret = config("SLACK_SIGNING_SECRET")

@@ -1,6 +1,6 @@
 from atlassian import Confluence, errors
 from llama_index import SimpleDirectoryReader, GPTVectorStoreIndex
-from langchain.llms import OpenAI
+from langchain.llms import AzureOpenAI
 import os
 import sys
 from decouple import config
@@ -87,7 +87,7 @@ def create_unique_folder():
 
 
 def generate_cql_query_keywords(input_text: str, user_messages: list = None, bot_messages: list = None) -> str:
-    llm = OpenAI()
+    llm = AzureOpenAI(engine="kai-bot")
 
     if user_messages and bot_messages:
         prompt = pre_prompt_history + f"bot messages: {bot_messages}, user_messages: {user_messages}"
@@ -158,4 +158,5 @@ def conflu_search(
 
 if __name__ == "__main__":
     os.environ["OPENAI_API_KEY"] = config("OPENAI_API_KEY")
+    os.environ["OPENAI_API_BASE"] = config("OPENAI_API_BASE")
     conflu_search("What is the complete BYODB process?")

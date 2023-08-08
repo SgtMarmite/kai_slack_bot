@@ -46,8 +46,7 @@ text ~ "BYODB AND process"
 """
 
 
-def generate_jql_query_keywords(input_text: str) -> str:
-    llm = OpenAI()
+def generate_jql_query_keywords(llm, input_text: str) -> str:
     response = llm.predict(pre_prompt + input_text)
     return response
 
