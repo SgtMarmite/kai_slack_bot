@@ -1,6 +1,6 @@
 from atlassian import Confluence, errors
 from llama_index import SimpleDirectoryReader, GPTVectorStoreIndex
-from langchain.llms import OpenAI
+from langchain.llms import AzureOpenAI
 import os
 import sys
 from decouple import config
@@ -14,50 +14,88 @@ confluence = Confluence(
     password=config("CONFLUENCE_PASSWORD")
 )
 
-main_file_path = sys.modules['__main__'].__file__
+try:
+    main_file_path = '~'
+except Exception as e:
+    print("Error getting main_file_path:", str(e))
+    main_file_path = ''
+
+print("main_file_path:", main_file_path)
+
 data_dir = os.path.join(os.path.dirname(os.path.abspath(main_file_path)), "data")
-
+print("data_dir:", data_dir)
 pre_prompt = """
-You are being given a question that is meant to be answered by searching the 
-Keboola Confluence docs. The only way to answer this question is to search the docs. 
-In order to search the docs, you must generate a CQL query that will 
-return the most relevant results. 
-Confluence uses Apache Lucene for text indexing, 
-which provides a rich query language. 
-Much of the information about how to generate a CQL query 
-is derived from the Query Parser Syntax
-page of the Lucene documentation.
+You are being given a question that needs to be answered by searching the Keboola Confluence docs. To find the answer, 
+you must generate a CQL query that will return the most relevant results.
+
+Confluence uses Apache Lucene for text indexing, which provides a rich query language. Much of the information about how
+ to generate a CQL query can be found in the Query Parser Syntax page of the Lucene documentation.
+
+A query is composed of terms and operators. There are two types of terms: single terms and phrases.
+
+- Single terms: These are single words like "test" or "hello".
+- Phrases: These are groups of words surrounded by double quotes, such as "hello dolly".
+
+Remember that all query terms in Confluence are case insensitive.
+
+Your task is to take the input question and generate a CQL query that will return the most relevant results. Focus on 
+using shorter terms rather than long ones, and avoid including phrases like "step by step guide" or "exact process."
+Do not include words like "step" or "guide" in the search query.
 
 
-A query is broken up into terms and operators. 
-There are two types of terms: Single Terms and Phrases.
-
-A Single Term is a single word such as "test" or "hello".
-
-A Phrase is a group of words surrounded by double quotes such as "hello dolly".
-
-Note: All query terms in Confluence are case insensitive.
-
-Your task is to take the input question and generate a CQL query that will return the most relevant results. 
-Use shorter terms rather than long ones. Do not include wording like: step by step guide, exact process etc.
-Respond only with a valid atlassian CQL query!
+Please respond with a valid Atlassian CQL query that you believe will yield the most relevant results.
 
 Examples:
 text ~ "Keboola AND Python AND component"
 text ~ "BYODB AND process"
+text ~ "Keboola AND component AND publish"
+"""
+
+pre_prompt_history = """
+You are being given a conversation history between a ChatGPT bot and a user asking a question
+that needs to be answered by searching the Keboola Confluence docs. To find the answer, 
+you must generate a CQL query that will return the most relevant results.
+
+Confluence uses Apache Lucene for text indexing, which provides a rich query language. Much of the information about how
+ to generate a CQL query can be found in the Query Parser Syntax page of the Lucene documentation.
+
+A query is composed of terms and operators. There are two types of terms: single terms and phrases.
+
+- Single terms: These are single words like "test" or "hello".
+- Phrases: These are groups of words surrounded by double quotes, such as "hello dolly".
+
+Remember that all query terms in Confluence are case insensitive.
+
+Your task is to take the input question and generate a CQL query that will return the most relevant results. Focus on 
+using shorter terms rather than long ones, and avoid including phrases like "step by step guide" or "exact process."
+Do not include words like "step" or "guide" in the search query.
+
+Please respond with a valid Atlassian CQL query that you believe will yield the most relevant results.
+
+Examples:
+text ~ "Keboola AND Python AND component"
+text ~ "BYODB AND process"
+text ~ "Keboola AND component AND publish"
 """
 
 
 def create_unique_folder():
     folder_name = str(uuid.uuid4())
     folder_path = os.path.join(data_dir, folder_name)
-    os.mkdir(folder_path)
+    os.makedirs(folder_path)
     return folder_path
 
 
-def generate_cql_query_keywords(input_text: str) -> str:
-    llm = OpenAI()
-    response = llm.predict(pre_prompt + input_text)
+def generate_cql_query_keywords(input_text: str, user_messages: list = None, bot_messages: list = None) -> str:
+    llm = AzureOpenAI(engine="kai-bot")
+
+    if user_messages and bot_messages:
+        prompt = pre_prompt_history + f"bot messages: {bot_messages}, user_messages: {user_messages}"
+    else:
+        prompt = pre_prompt + input_text
+
+    logging.info(f"Prompting: {prompt}")
+    response = llm.predict(prompt)
     cql_query = response.replace("\n", "").strip(" ")
     return cql_query
 
@@ -75,12 +113,10 @@ def query_conflu(cql_query: str):
 
 
 def download_documents(pages: list):
-    logging.info(f"Found pages: {pages}")
     documents = []
     query_directory = create_unique_folder()
 
     for page in pages:
-        logging.info(f"Checking page: {page})")
         # Check the local directory to see if we already have the page's content
         if os.path.exists(f"{query_directory}/{page['content']['id']}.txt"):
             with open(f"{query_directory}/{page['content']['id']}.txt", "r") as f:
@@ -105,11 +141,14 @@ def download_documents(pages: list):
     return index
 
 
-def conflu_search(search: str) -> Union[GPTVectorStoreIndex, None]:
+def conflu_search(
+        search: str,
+        user_messages: list = None,
+        bot_messages: list = None) -> Union[GPTVectorStoreIndex, None]:
     query_counter = 0
-    while query_counter < 5:
+    while query_counter < 3:
         query_counter += 1
-        query = generate_cql_query_keywords(search)
+        query = generate_cql_query_keywords(search, user_messages, bot_messages)
         r = query_conflu(query)
         if r is not None and r.get("results"):
             index = download_documents(r.get("results"))
@@ -119,4 +158,5 @@ def conflu_search(search: str) -> Union[GPTVectorStoreIndex, None]:
 
 if __name__ == "__main__":
     os.environ["OPENAI_API_KEY"] = config("OPENAI_API_KEY")
+    os.environ["OPENAI_API_BASE"] = config("OPENAI_API_BASE")
     conflu_search("What is the complete BYODB process?")
